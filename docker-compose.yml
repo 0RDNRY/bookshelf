@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+
+  mongo:
+    image: mongo:7
+    container_name: bookshelf_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - bookshelf_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: bookshelf_api
+    restart: unless-stopped
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/bookshelf
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - bookshelf_net
+
+  frontend:
+    build: ./frontend
+    container_name: bookshelf_ui
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - bookshelf_net
+
+volumes:
+  mongo_data:
+
+networks:
+  bookshelf_net:
+    driver: bridge
